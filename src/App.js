@@ -1,15 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 //components
-import Blog from "./components/Blog";
 import Notification from "./components/Notification";
 import Togglable from "./components/Togglable";
+import Blogs from "./components/Blogs";
 //services
 import blogService from "./services/blogs";
 import loginService from "./services/login";
 import BlogForm from "./components/BlogForm";
 
 const App = () => {
-  const [blogs, setBlogs] = useState([]);
   const [user, setUser] = useState(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -19,18 +18,21 @@ const App = () => {
 
   const blogFormRef = useRef();
 
-  //======================================================//
   useEffect(() => {
     const userLocalStorage = JSON.parse(
       window.localStorage.getItem("loggedBlogUser")
     );
+
     if (userLocalStorage) {
+      setToken(loginService.setToken(userLocalStorage.token));
       setUser(userLocalStorage);
-      const returnedToken = loginService.setToken(userLocalStorage.token);
-      setToken(returnedToken);
-      blogService.getAll(returnedToken).then((blogs) => setBlogs(blogs));
     }
   }, []);
+
+  //======================================================//
+
+  //======================================================//
+
   //======================================================//
   const showLogin = () => (
     <>
@@ -61,29 +63,6 @@ const App = () => {
         <button id="login-button">login</button>
       </form>
     </>
-  );
-  //======================================================//
-
-  const showBlogs = () => (
-    <div>
-      <h2>blogs</h2>
-      <Notification notification={notification} />
-      <p>
-        {`${user.username} is logged in`}{" "}
-        <button onClick={handleLogout}>logout</button>{" "}
-      </p>
-      {createNewBlog()}
-      {blogs
-        .sort((a, b) => b.likes - a.likes)
-        .map((blog) => (
-          <Blog
-            key={blog.id}
-            blog={blog}
-            token={token}
-            username={user.username}
-          />
-        ))}
-    </div>
   );
   //======================================================//
 
@@ -124,13 +103,13 @@ const App = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const loggedUser = await loginService.login(username, password);
-      setUser(loggedUser);
-      const returnedToken = loginService.setToken(loggedUser.token);
-      setToken(returnedToken);
-      const returnedBlogs = await blogService.getAll(returnedToken);
-      setBlogs(returnedBlogs);
-      window.localStorage.setItem("loggedBlogUser", JSON.stringify(loggedUser));
+      const retrievedUser = await loginService.login(username, password);
+      setUser(retrievedUser);
+      setToken(loginService.setToken(retrievedUser.token));
+      window.localStorage.setItem(
+        "loggedBlogUser",
+        JSON.stringify(retrievedUser)
+      );
     } catch (error) {
       const message = {
         content: `Wrong Credentials.`,
@@ -158,7 +137,21 @@ const App = () => {
   };
   //======================================================//
 
-  return <>{user ? showBlogs() : showLogin()}</>;
+  return (
+    <div>
+      {user ? (
+        <Blogs
+          user={user}
+          notification={notification}
+          handleLogout={handleLogout}
+          createNewBlog={createNewBlog}
+          token={token}
+        />
+      ) : (
+        showLogin()
+      )}
+    </div>
+  );
 };
 
 export default App;
