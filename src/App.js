@@ -7,6 +7,8 @@ import Blogs from "./components/Blogs";
 import blogService from "./services/blogs";
 import loginService from "./services/login";
 import BlogForm from "./components/BlogForm";
+// react-query
+import { useQueryClient, useMutation } from "react-query";
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -17,6 +19,46 @@ const App = () => {
   const [notification, setNotification] = useState(null);
 
   const blogFormRef = useRef();
+
+  // const queryClient = useQueryClient();
+
+  // const addBlog = useMutation({
+  //   mutationFn: ({ newBlog }) => blogService.createNew(newBlog, token),
+
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries("blgs");
+  //     const message = {
+  //       content: `a new blog added`,
+  //       style: "info",
+  //     };
+  //     showNotification(message);
+  //   },
+  //   onError: () => {
+  //     const message = {
+  //       content: `Fill out all the fields.`,
+  //       style: "error",
+  //     };
+  //     showNotification(message);
+  //   },
+  // });
+
+  const useAddBlog = (newBlog) => {
+    const queryClient = useQueryClient();
+    const { mutate, isLoading, error, data } = useMutation(
+      () => blogService.createNew(newBlog, token),
+      {
+        onSuccess: async (data) => {
+          queryClient.invalidateQueries("blgs");
+          console.log("data: ", data);
+        },
+        onError: (error) => {
+          console.log(error);
+        },
+      }
+    );
+
+    return data;
+  };
 
   useEffect(() => {
     const userLocalStorage = JSON.parse(
@@ -74,22 +116,8 @@ const App = () => {
       url,
       user: user.id,
     };
-    let message = "";
-    const response = await blogService.createNew(newBlog, token);
-    if (response === "Request failed with status code 400") {
-      message = {
-        content: `Fill out all the fields.`,
-        style: "error",
-      };
-    } else {
-      message = {
-        content: `a new blog ${newBlog.title}! by ${newBlog.author} added`,
-        style: "info",
-      };
-      const returnedBlogs = await blogService.getAll(token);
-      setBlogs(returnedBlogs);
-    }
-    showNotification(message);
+
+    addBlog(newBlog);
   };
   //======================================================//
 
